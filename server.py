@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from typing import Literal, TypedDict
 
 from mcp.server import MCPServer
@@ -149,6 +151,60 @@ def make_coffee(size: Literal["small", "medium", "large"]) -> CoffeeResult:
         ],
     }
 
+class ShipmentSummary(TypedDict):
+    period_start: str
+    period_end: str
+    days: int
+    shipment_count: int
+    total_charges: float
+    currency: str
+    data_note: str
+
+
+SAMPLE_SHIPMENTS = [
+    {"PRO_NUMBER": "SAMPLE-1001", "CUSTOMER_ID": "CUST-01",
+     "SHIP_DATE": date.today() - timedelta(days=2), "STATUS": "Delivered",
+     "CHARGES": 120.50},
+    {"PRO_NUMBER": "SAMPLE-1002", "CUSTOMER_ID": "CUST-02",
+     "SHIP_DATE": date.today() - timedelta(days=10), "STATUS": "In Transit",
+     "CHARGES": 245.00},
+    {"PRO_NUMBER": "SAMPLE-1003", "CUSTOMER_ID": "CUST-03",
+     "SHIP_DATE": date.today() - timedelta(days=20), "STATUS": "Delivered",
+     "CHARGES": 80.00},
+    {"PRO_NUMBER": "SAMPLE-1004", "CUSTOMER_ID": "CUST-04",
+     "SHIP_DATE": date.today() - timedelta(days=35), "STATUS": "Delivered",
+     "CHARGES": 500.00},
+    {"PRO_NUMBER": "SAMPLE-1005", "CUSTOMER_ID": "CUST-05",
+     "SHIP_DATE": date.today() - timedelta(days=90), "STATUS": "Exception",
+     "CHARGES": 750.00},
+]
+
+
+@mcp.tool()
+def get_shipment_summary(days: int = 30) -> ShipmentSummary:
+    """Summarize shipment count and charges for the past 1 to 90 days."""
+    if not 1 <= days <= 90:
+        raise ValueError("days must be between 1 and 90.")
+
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+
+    matching_shipments = [
+        shipment for shipment in SAMPLE_SHIPMENTS
+        if start_date <= shipment["SHIP_DATE"] <= end_date
+    ]
+
+    return {
+        "period_start": start_date.isoformat(),
+        "period_end": end_date.isoformat(),
+        "days": days,
+        "shipment_count": len(matching_shipments),
+        "total_charges": round(
+            sum(shipment["CHARGES"] for shipment in matching_shipments), 2
+        ),
+        "currency": "USD",
+        "data_note": "Synthetic sample data; not live shipment information.",
+    }
 
 if __name__ == "__main__":
     mcp.run(
